@@ -1,0 +1,9 @@
+Multitouch Media Browser
+========================
+
+Installation
+------------
+
+1. Ensure you have PyMT 0.5.1 minimum
+2. Configure your path to image directories in config.ini
+3. Run mediabrowser.py !
