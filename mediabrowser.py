@@ -4,8 +4,17 @@ from os import listdir
 from collections import deque
 from ConfigParser import ConfigParser
 from pymt import *
+from pdfbook import MTBook
 
 current_directory = dirname(__file__)
+
+css_add_sheet('''
+book {
+    draw-background: 1;
+    border-radius: 15;
+    bg-color: rgba(120, 120, 120, 200);
+}
+''')
 
 class MediaVideo(MTSimpleVideo):
     def __init__(self, filename, **kwargs):
@@ -113,7 +122,7 @@ class MediaBrowser(MTBoxLayout):
             m.add_widget(video)
             video.connect('on_resize', m, 'size')
         elif ext in self.extensions['others']:
-            pass
+            m = MTBook(pdf_filename=filename)
         else:
             print 'Ignore <%s>' % filename
 
