@@ -4,7 +4,6 @@ from os import listdir
 from collections import deque
 from ConfigParser import ConfigParser
 from pymt import *
-import gst
 
 current_directory = dirname(__file__)
 
@@ -181,18 +180,21 @@ class MediaBrowser(MTBoxLayout):
         pass
 
     def on_book_release(self, button, *largs):
+        self.clear()
         self.load_directory(button.center, 'others', self.config.get('directories', 'others'))
 
     def on_movie_press(self, button, *largs):
         pass
 
     def on_movie_release(self, button, *largs):
+        self.clear()
         self.load_directory(button.center, 'movies', self.config.get('directories', 'movies'))
 
     def on_picture_press(self, button, *largs):
         pass
 
     def on_picture_release(self, button, *largs):
+        self.clear()
         self.load_directory(button.center, 'pictures', self.config.get('directories', 'pictures'))
 
     def on_clear_press(self, button, *largs):
