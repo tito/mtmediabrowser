@@ -8,6 +8,9 @@ from pymt import *
 
 current_dir = os.path.dirname(__file__)
 
+if sys.platform in ('win32', 'cygwin'):
+    os.environ['PATH'] += ';' + os.path.join(current_dir, 'dlls')
+
 class PdfPopplerException(Exception):
     pass
 
@@ -64,7 +67,6 @@ class PdfPoppler(PdfBase):
 
         if sys.platform in ('win32', 'cygwin'):
             filename = 'libpoppler-glib-4.dll'
-            filename = os.path.join(current_dir, '..', filename)
             self.l_poppler = cdll.LoadLibrary(filename)
         else:
             filename = find_library('poppler-glib')
@@ -79,11 +81,9 @@ class PdfPoppler(PdfBase):
         p.poppler_document_new_from_file.restype = c_void_p
         p.poppler_document_get_page.restype = c_void_p
         p.poppler_document_get_page.argtypes = [c_void_p, c_int]
-        p.poppler_page_render.argtypes = [c_void_p, c_void_p]
 
         if sys.platform in ('win32', 'cygwin'):
             filename = 'libgobject-2.0-0.dll'
-            filename = os.path.join(current_dir, '..', filename)
             self.l_gobject = cdll.LoadLibrary(filename)
         else:
             self.l_gobject = self.l_poppler
@@ -114,6 +114,7 @@ class PdfPoppler(PdfBase):
         c.cairo_surface_status.argtypes = [c_void_p]
         c.cairo_scale.argtypes = [c_void_p, c_double, c_double]
         c.cairo_destroy.argtypes = [c_void_p]
+        self.l_poppler.poppler_page_render.argtypes = [c_void_p, c_void_p]
 
 
     def _init_poppler_gdk(self):
@@ -124,9 +125,11 @@ class PdfPoppler(PdfBase):
             self.l_gdk = cdll.LoadLibrary(filename)
         else:
             self.l_gdk = self.l_poppler
+        print 'set restype'
         self.l_gdk.gdk_pixbuf_new.restype = c_void_p
 
     def open(self):
+        print 'Open file'
         class GError(Structure):
             _fields_ = [('domain', c_int32),
                         ('code', c_int),
@@ -137,11 +140,13 @@ class PdfPoppler(PdfBase):
             filename += '/'
         filename += self.filename
 
+        print 'New document'
         error = POINTER(GError)()
         self.l_poppler.poppler_document_new_from_file.argtypes = [
             c_char_p, c_char_p, c_void_p]
         self._doc = self.l_poppler.poppler_document_new_from_file(
                 c_char_p(filename), None, byref(error))
+        print 'New document=', self._doc
         if self._doc is None:
             raise PdfPopplerException(str(error.contents.message))
 
@@ -162,6 +167,7 @@ class PdfPoppler(PdfBase):
         return ( w.value, h.value )
 
     def render_page(self, index):
+        print 'render page', index
         w, h = map(int, self.get_page_size(index))
         zoom = 1
         w, h = map(lambda x: x * zoom, (w, h))
@@ -205,10 +211,12 @@ class PdfPoppler(PdfBase):
             # 3: bit per samples
             self.l_gdk.gdk_pixbuf_new.restype = c_void_p
             surface = self.l_gdk.gdk_pixbuf_new(0, 1, 8, w, h)
+            print 'create surface'
 
             assert( surface is not None )
 
             # render to pixbuf (fix 6 arg)
+            print 'render to pixbuf'
             self.l_poppler.poppler_page_render_to_pixbuf.argtypes = [
                     c_void_p, c_int, c_int, c_int, c_int, c_double, c_int, c_void_p]
             self.l_poppler.poppler_page_render_to_pixbuf(page, 0, 0,
@@ -232,20 +240,24 @@ class PdfPoppler(PdfBase):
             self.l_gdk.gdk_pixdata_from_pixbuf(byref(pixdata), surface, 0)
 
             # convert to buffer
+            print 'convert'
             size = int(4 * w * h)
             buffer = create_string_buffer(size)
             memmove(buffer, pixdata.pixel_data, size)
 
             # unref
+            print 'unref'
             self.l_gobject.g_object_unref(surface)
 
         # use pymt
 
         # picking only RGB
+        print 'create texture'
         texture = Texture.create(w, h)#, mipmap=True)
         texture.blit_buffer(buffer, mode='RGBA')
         texture.flip_vertical()
 
+        print 'done !'
         return texture
 
 Pdf = PdfPoppler
